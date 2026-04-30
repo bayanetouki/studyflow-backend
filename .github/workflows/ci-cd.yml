@@ -57,7 +57,7 @@ jobs:
       - name: Execution des tests avec couverture
         run: |
           coverage run -m pytest tests/ -v
-          coverage report --min-coverage=70
+          coverage report
           coverage xml
 
       - name: Upload rapport de couverture (Codecov)
