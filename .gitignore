@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Django
+*.log
+*.pot
+db.sqlite3
+/media/
+/staticfiles/
+
+# Environnement
+.env
+.venv/
+venv/
+env/
+
+# Tests
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Docker
+*.override.yml

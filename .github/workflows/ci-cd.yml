@@ -1,0 +1,149 @@
+name: CI/CD - StudyFlow Backend
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1 : TESTS UNITAIRES + COUVERTURE
+  # ─────────────────────────────────────────────
+  test:
+    name: 🧪 Tests Unitaires
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: studyflow_test
+          POSTGRES_USER: studyflow_user
+          POSTGRES_PASSWORD: studyflow_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: test-secret-key-github-actions
+      DEBUG: True
+      DATABASE_URL: postgres://studyflow_user:studyflow_pass@localhost:5432/studyflow_test
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configuration Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 📦 Installation des dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🔄 Migrations de la base de données
+        run: python manage.py migrate
+
+      - name: 🧪 Exécution des tests avec couverture
+        run: |
+          coverage run -m pytest tests/ -v
+          coverage report --min-coverage=70
+          coverage xml
+
+      - name: 📊 Upload rapport de couverture (Codecov)
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  # ─────────────────────────────────────────────
+  # JOB 2 : QUALITÉ DU CODE (Linting)
+  # ─────────────────────────────────────────────
+  lint:
+    name: 🔍 Qualité du Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐍 Configuration Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 📦 Installation outils de lint
+        run: pip install flake8
+
+      - name: 🔍 Vérification du style (flake8)
+        run: |
+          flake8 apps/ studyflow/ --max-line-length=120 --exclude=migrations
+
+  # ─────────────────────────────────────────────
+  # JOB 3 : BUILD DOCKER
+  # ─────────────────────────────────────────────
+  docker-build:
+    name: 🐳 Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🔑 Connexion Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 🐳 Build et Push de l'image Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/studyflow-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/studyflow-backend:${{ github.sha }}
+
+  # ─────────────────────────────────────────────
+  # JOB 4 : DÉPLOIEMENT EN PRODUCTION (Railway/Render)
+  # (Seulement sur push vers main)
+  # ─────────────────────────────────────────────
+  deploy:
+    name: 🚀 Déploiement Production
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🚀 Déploiement sur Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          npm install -g @railway/cli
+          railway up --service studyflow-backend
+
+      # Alternative : déploiement sur un VPS via SSH
+      # - name: 🚀 Déploiement SSH sur VPS
+      #   uses: appleboy/ssh-action@v1
+      #   with:
+      #     host: ${{ secrets.VPS_HOST }}
+      #     username: ${{ secrets.VPS_USER }}
+      #     key: ${{ secrets.VPS_SSH_KEY }}
+      #     script: |
+      #       cd /opt/studyflow
+      #       git pull origin main
+      #       docker-compose pull
+      #       docker-compose up -d --build
+      #       docker-compose exec backend python manage.py migrate
