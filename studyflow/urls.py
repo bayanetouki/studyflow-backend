@@ -29,10 +29,10 @@ def api_root(request):
 urlpatterns = [
     # Page d'accueil API
     path('', api_root, name='api-root'),
-    
+
     # Admin Django
     path('admin/', admin.site.urls),
-    
+
     # API v1
     path('api/v1/auth/', include('apps.authentication.urls')),
     path('api/v1/tasks/', include('apps.tasks.urls')),
