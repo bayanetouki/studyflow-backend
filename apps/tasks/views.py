@@ -1,17 +1,17 @@
 """
 Views pour la gestion des tâches - StudyFlow
 """
-from rest_framework import generics, status, permissions, filters
+from rest_framework import generics, permissions, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from .models import Task, PomodoroSession, CalendarEvent
 from .serializers import (
-    TaskSerializer, TaskToggleSerializer,
-    PomodoroSessionSerializer, CalendarEventSerializer
+    TaskSerializer,
+    PomodoroSessionSerializer,
+    CalendarEventSerializer
 )
 
 
@@ -19,7 +19,7 @@ class TaskListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/v1/tasks/          → Lister les tâches de l'utilisateur
     POST /api/v1/tasks/          → Créer une nouvelle tâche
-    
+
     Filtres disponibles : ?priority=high&completed=false&view_mode=daily
     """
     serializer_class = TaskSerializer
