@@ -127,9 +127,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploiement sur Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          npm install -g @railway/cli
-          railway up --service studyflow-backend
+      - name: Deploiement automatique par Render
+        run: echo "Render deploye automatiquement - https://studyflow-api-sys9.onrender.com"
